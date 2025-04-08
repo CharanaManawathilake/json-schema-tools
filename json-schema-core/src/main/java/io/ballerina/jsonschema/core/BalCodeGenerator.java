@@ -3,6 +3,8 @@ package io.ballerina.jsonschema.core;
 import io.ballerina.compiler.syntax.tree.ModuleMemberDeclarationNode;
 import io.ballerina.compiler.syntax.tree.NodeParser;
 
+import java.util.Arrays;
+
 public class BalCodeGenerator {
     public static final String IMPORT = "import";
     public static final String PUBLIC = "public";
@@ -29,6 +31,7 @@ public class BalCodeGenerator {
     public static final String EQUAL = "=";
     public static final String DOUBLE_QUOTATION = "\"";
     public static final String VALUE = "value";
+    public static final String UNDERSCORE = "_";
 
     public static final String INTEGER = "int";
     public static final String STRING = "string";
@@ -81,6 +84,9 @@ public class BalCodeGenerator {
     private static final String INVALID_CHARS_PATTERN = ".*[!@$%^&*()_\\-|/\\\\\\s\\d].*";
     private static final String DIGIT_PATTERN = ".*\\d.*";
     private static final String STARTS_WITH_DIGIT_PATTERN = "^\\d.*";
+    private static final String SLASH_PATTERN = "[/\\\\]";
+    private static final String WHITESPACE_PATTERN = "\\s";
+    private static final String SPECIAL_CHARS_PATTERN = "[!@$%^&*()_\\-|]";
 
     public static String createType(String name, Schema schema, Object type, Generator generator) {
         if (type == Long.class) {
@@ -138,7 +144,7 @@ public class BalCodeGenerator {
     }
 
     public static String resolveNameConflicts(String name, Generator generator) {
-        String baseName = name;
+        String baseName = sanitizeName(name);
         int counter = 1;
         while (generator.nodes.containsKey(name)) {
             name = baseName + counter;
@@ -154,4 +160,17 @@ public class BalCodeGenerator {
         return Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
+    public static String sanitizeName(String input) {
+        if (!input.matches(INVALID_CHARS_PATTERN)
+                || (input.matches(DIGIT_PATTERN) && !input.matches(STARTS_WITH_DIGIT_PATTERN))) {
+            return input;
+        }
+        if (input.matches(STARTS_WITH_DIGIT_PATTERN)) {
+            input = UNDERSCORE + input;
+        }
+        for (String placeholder : Arrays.asList(SLASH_PATTERN, WHITESPACE_PATTERN, SPECIAL_CHARS_PATTERN)) {
+            input = input.replaceAll(placeholder, UNDERSCORE);
+        }
+        return input;
+    }
 }
