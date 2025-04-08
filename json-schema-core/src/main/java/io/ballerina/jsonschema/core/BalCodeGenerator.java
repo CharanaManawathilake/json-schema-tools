@@ -4,6 +4,7 @@ import io.ballerina.compiler.syntax.tree.ModuleMemberDeclarationNode;
 import io.ballerina.compiler.syntax.tree.NodeParser;
 
 import java.util.Arrays;
+import java.util.Map;
 
 public class BalCodeGenerator {
     public static final String IMPORT = "import";
@@ -88,17 +89,20 @@ public class BalCodeGenerator {
     private static final String WHITESPACE_PATTERN = "\\s";
     private static final String SPECIAL_CHARS_PATTERN = "[!@$%^&*()_\\-|]";
 
-    public static String createType(String name, Schema schema, Object type, Generator generator) {
+    public static String createType(Generator generator, String name, Schema schema, Object type) {
         if (type == Long.class) {
-            return createInteger(name, schema.getMinimum(), schema.getExclusiveMinimum(), schema.getMaximum(),
-                    schema.getExclusiveMaximum(), schema.getMultipleOf(), generator);
+            return createInteger(generator, name, schema.getMinimum(), schema.getExclusiveMinimum(), schema.getMaximum(),
+                    schema.getExclusiveMaximum(), schema.getMultipleOf());
+        } else if (type == Double.class) {
+            return createNumber(generator, name, schema.getMinimum(), schema.getExclusiveMinimum(), schema.getMaximum(),
+                    schema.getExclusiveMaximum(), schema.getMultipleOf());
         }
         //TODO: Complete for other data types
         return "INCOMPLETE";
     }
 
-    public static String createInteger(String name, Double minimum, Double exclusiveMinimum, Double maximum,
-                                       Double exclusiveMaximum, Double multipleOf, Generator generator) {
+    public static String createInteger(Generator generator, String name, Double minimum, Double exclusiveMinimum,
+                                       Double maximum, Double exclusiveMaximum, Double multipleOf) {
         if (minimum == null && maximum == null && exclusiveMaximum == null &&
                 exclusiveMinimum == null && multipleOf == null) {
             return INTEGER;
@@ -142,6 +146,53 @@ public class BalCodeGenerator {
 
         return finalName;
     }
+
+    public static String createNumber(Generator generator, String name, Double minimum, Double exclusiveMinimum,
+                                      Double maximum, Double exclusiveMaximum, Double multipleOf) {
+        if (minimum == null && maximum == null && exclusiveMaximum == null &&
+                exclusiveMinimum == null && multipleOf == null) {
+            return NUMBER;
+        }
+
+        if ((minimum != null && maximum != null && maximum < minimum) ||
+                (minimum != null && exclusiveMaximum != null && exclusiveMaximum <= minimum) ||
+                (exclusiveMinimum != null && maximum != null && maximum <= exclusiveMinimum) ||
+                (exclusiveMinimum != null && exclusiveMaximum != null && exclusiveMaximum <= exclusiveMinimum)) {
+            return NEVER;
+        }
+
+        generator.addImports(BAL_JSON_SCHEMA_DATA_MODULE);
+        String finalName = resolveNameConflicts(convertToPascalCase(name), generator);
+
+        StringBuilder annotation = new StringBuilder();
+        annotation.append(NUMBER_ANNOTATION).append(OPEN_BRACES);
+
+        if (minimum != null) {
+            annotation.append(MINIMUM).append(COLON).append(minimum).append(COMMA);
+        }
+        if (exclusiveMinimum != null) {
+            annotation.append(EXCLUSIVE_MINIMUM).append(COLON).append(exclusiveMinimum).append(COMMA);
+        }
+        if (maximum != null) {
+            annotation.append(MAXIMUM).append(COLON).append(maximum).append(COMMA);
+        }
+        if (exclusiveMaximum != null) {
+            annotation.append(EXCLUSIVE_MAXIMUM).append(COLON).append(exclusiveMaximum).append(COMMA);
+        }
+        if (multipleOf != null) {
+            annotation.append(MULTIPLE_OF).append(COLON).append(multipleOf).append(COMMA);
+        }
+
+        annotation.deleteCharAt(annotation.length() - 1).append(CLOSE_BRACES).append(NEW_LINE);
+        annotation.append(PUBLIC).append(WHITE_SPACE).append(TYPE);
+        annotation.append(WHITE_SPACE).append(finalName).append(WHITE_SPACE).append(NUMBER).append(SEMI_COLON);
+
+        ModuleMemberDeclarationNode moduleNode = NodeParser.parseModuleMemberDeclaration(annotation.toString());
+        generator.nodes.put(finalName, moduleNode);
+
+        return finalName;
+    }
+
 
     public static String resolveNameConflicts(String name, Generator generator) {
         String baseName = sanitizeName(name);

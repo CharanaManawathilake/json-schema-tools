@@ -85,14 +85,14 @@ public class Generator {
             schemaType.remove(Class.class);
             if (schemaType.size() == 1) {
                 // Only a single type.
-                String typeName = createType(name, schema, schemaType.getFirst(), this);
+                String typeName = createType(this, name, schema, schemaType.getFirst());
                 ID_TO_TYPE_MAP.put(schema.getIdKeyword(), typeName);
                 return typeName;
             } else {
                 Set<String> unionTypes = new HashSet<>();
                 for (Object element : schemaType) {
                     String subtypeName = name + getBallerinaType(element);
-                    unionTypes.add(createType(subtypeName, schema, element, this));
+                    unionTypes.add(createType(this, subtypeName, schema, element));
                 }
                 if (unionTypes.containsAll(
                         Set.of(INTEGER, NUMBER, BOOLEAN, STRING, UNIVERSAL_ARRAY, UNIVERSAL_OBJECT, NULL))) {
