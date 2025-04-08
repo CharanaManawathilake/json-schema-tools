@@ -3,8 +3,8 @@ package io.ballerina.jsonschema.core;
 import io.ballerina.compiler.syntax.tree.ModuleMemberDeclarationNode;
 import io.ballerina.compiler.syntax.tree.NodeParser;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Map;
 
 public class BalCodeGenerator {
     public static final String IMPORT = "import";
@@ -89,13 +89,22 @@ public class BalCodeGenerator {
     private static final String WHITESPACE_PATTERN = "\\s";
     private static final String SPECIAL_CHARS_PATTERN = "[!@$%^&*()_\\-|]";
 
+    private static final ArrayList<String> STRING_FORMATS = new ArrayList<>(
+            Arrays.asList("date", "time", "date-time", "duration", "regex", "email", "idn-email", "hostname",
+                    "idn-hostname", "ipv4", "ipv6", "json-pointer", "relative-json-pointer", "uri",
+                    "uri-reference", "uri-template", "iri", "iri-reference", "uuid")
+    );
+
     public static String createType(Generator generator, String name, Schema schema, Object type) {
         if (type == Long.class) {
-            return createInteger(generator, name, schema.getMinimum(), schema.getExclusiveMinimum(), schema.getMaximum(),
-                    schema.getExclusiveMaximum(), schema.getMultipleOf());
+            return createInteger(generator, name, schema.getMinimum(), schema.getExclusiveMinimum(),
+                    schema.getMaximum(), schema.getExclusiveMaximum(), schema.getMultipleOf());
         } else if (type == Double.class) {
-            return createNumber(generator, name, schema.getMinimum(), schema.getExclusiveMinimum(), schema.getMaximum(),
-                    schema.getExclusiveMaximum(), schema.getMultipleOf());
+            return createNumber(generator, name, schema.getMinimum(), schema.getExclusiveMinimum(),
+                    schema.getMaximum(), schema.getExclusiveMaximum(), schema.getMultipleOf());
+        } else if (type == String.class) {
+            return createString(generator, name, schema.getFormat(), schema.getMinLength(),
+                    schema.getMaxLength(), schema.getPattern());
         }
         //TODO: Complete for other data types
         return "INCOMPLETE";
@@ -137,8 +146,8 @@ public class BalCodeGenerator {
             annotation.append(MULTIPLE_OF).append(COLON).append(multipleOf).append(COMMA);
         }
 
-        annotation.deleteCharAt(annotation.length() - 1).append(CLOSE_BRACES).append(NEW_LINE);
-        annotation.append(PUBLIC).append(WHITE_SPACE).append(TYPE).append(WHITE_SPACE).append(finalName)
+        annotation.deleteCharAt(annotation.length() - 1).append(CLOSE_BRACES).append(NEW_LINE)
+                .append(PUBLIC).append(WHITE_SPACE).append(TYPE).append(WHITE_SPACE).append(finalName)
                 .append(WHITE_SPACE).append(INTEGER).append(SEMI_COLON);
 
         ModuleMemberDeclarationNode moduleNode = NodeParser.parseModuleMemberDeclaration(annotation.toString());
@@ -183,9 +192,9 @@ public class BalCodeGenerator {
             annotation.append(MULTIPLE_OF).append(COLON).append(multipleOf).append(COMMA);
         }
 
-        annotation.deleteCharAt(annotation.length() - 1).append(CLOSE_BRACES).append(NEW_LINE);
-        annotation.append(PUBLIC).append(WHITE_SPACE).append(TYPE);
-        annotation.append(WHITE_SPACE).append(finalName).append(WHITE_SPACE).append(NUMBER).append(SEMI_COLON);
+        annotation.deleteCharAt(annotation.length() - 1).append(CLOSE_BRACES).append(NEW_LINE)
+                .append(PUBLIC).append(WHITE_SPACE).append(TYPE).append(WHITE_SPACE).append(finalName)
+                .append(WHITE_SPACE).append(NUMBER).append(SEMI_COLON);
 
         ModuleMemberDeclarationNode moduleNode = NodeParser.parseModuleMemberDeclaration(annotation.toString());
         generator.nodes.put(finalName, moduleNode);
@@ -193,6 +202,48 @@ public class BalCodeGenerator {
         return finalName;
     }
 
+    public static String createString(Generator generator, String name, String format, Long minLength,
+                                      Long maxLength, String pattern) {
+        if (format == null && minLength == null && maxLength == null && pattern == null) {
+            return STRING;
+        }
+
+        if (maxLength != null && minLength != null && maxLength < minLength) {
+            return NEVER;
+        }
+
+        generator.addImports(BAL_JSON_SCHEMA_DATA_MODULE);
+        String finalName = resolveNameConflicts(convertToPascalCase(name), generator);
+
+        StringBuilder annotation = new StringBuilder();
+        annotation.append(STRING_ANNOTATION).append(OPEN_BRACES);
+
+        if (format != null) {
+            if (!STRING_FORMATS.contains(format)) {
+                throw new IllegalArgumentException("Invalid format: " + format);
+            }
+            annotation.append(FORMAT).append(COLON).append(format).append(COMMA);
+        }
+        if (minLength != null) {
+            annotation.append(MIN_LENGTH).append(COLON).append(minLength).append(COMMA);
+        }
+        if (maxLength != null) {
+            annotation.append(MAX_LENGTH).append(COLON).append(maxLength).append(COMMA);
+        }
+        if (pattern != null) {
+            annotation.append(PATTERN).append(COLON).append(REGEX_PREFIX).append(BACK_TICK)
+                    .append(pattern).append(BACK_TICK).append(COMMA);
+        }
+
+        annotation.deleteCharAt(annotation.length() - 1).append(CLOSE_BRACES).append(NEW_LINE).append(PUBLIC)
+                .append(WHITE_SPACE).append(TYPE).append(WHITE_SPACE).append(finalName)
+                .append(WHITE_SPACE).append(STRING).append(SEMI_COLON);
+
+        ModuleMemberDeclarationNode moduleNode = NodeParser.parseModuleMemberDeclaration(annotation.toString());
+        generator.nodes.put(finalName, moduleNode);
+
+        return finalName;
+    }
 
     public static String resolveNameConflicts(String name, Generator generator) {
         String baseName = sanitizeName(name);

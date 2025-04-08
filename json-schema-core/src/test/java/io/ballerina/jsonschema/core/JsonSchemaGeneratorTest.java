@@ -37,7 +37,9 @@ public class JsonSchemaGeneratorTest {
     private static Stream<Object[]> provideTestPaths() {
         return Stream.of(
                 new Object[] {"1_simple_int_schema.json", "1_simple_int_schema.bal"},
-                new Object[] {"2_constrained_int_schema.json", "2_constrained_int_schema.bal"}
+                new Object[] {"2_constrained_int_schema.json", "2_constrained_int_schema.bal"},
+                new Object[] {"5_constrained_str_never_schema.json", "5_constrained_str_never_schema.bal"},
+                new Object[] {"4_constrained_str_schema.json", "4_constrained_str_schema.bal"}
         );
     }
 
