@@ -45,6 +45,7 @@ public class BalCodeGenerator {
     public static final String DEPENDENT_SCHEMA = "dependentSchema";
     public static final String DEPENDENT_REQUIRED = "dependentRequired";
 
+    public static final String BAL_JSON_SCHEMA_DATA_MODULE = "ballerina/data.jsondata";
     public static final String ANNOTATION_MODULE = "jsondata";
     public static final String NUMBER_ANNOTATION = AT + ANNOTATION_MODULE + COLON + "NumberValidation";
     public static final String STRING_ANNOTATION = AT + ANNOTATION_MODULE + COLON + "StringValidation";
@@ -97,12 +98,14 @@ public class BalCodeGenerator {
             return INTEGER;
         }
 
-        if (minimum != null && maximum != null && maximum < minimum) {
+        if ((minimum != null && maximum != null && maximum < minimum) ||
+                (minimum != null && exclusiveMaximum != null && exclusiveMaximum <= minimum) ||
+                (exclusiveMinimum != null && maximum != null && maximum <= exclusiveMinimum) ||
+                (exclusiveMinimum != null && exclusiveMaximum != null && exclusiveMaximum <= exclusiveMinimum)) {
             return NEVER;
         }
-        //TODO: More logic to be added here.
 
-        generator.addImports(ANNOTATION_MODULE);
+        generator.addImports(BAL_JSON_SCHEMA_DATA_MODULE);
         String finalName = resolveNameConflicts(convertToPascalCase(name), generator);
 
         StringBuilder annotation = new StringBuilder();
