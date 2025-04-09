@@ -5,7 +5,7 @@ import io.ballerina.compiler.syntax.tree.NodeParser;
 
 import java.util.Arrays;
 
-public class BalCodeGenerator {
+public class GeneratorUtils {
     public static final String IMPORT = "import";
     public static final String PUBLIC = "public";
     public static final String TYPE = "type";
@@ -92,9 +92,10 @@ public class BalCodeGenerator {
         if (type == Long.class) {
             return createInteger(name, schema.getMinimum(), schema.getExclusiveMinimum(), schema.getMaximum(),
                     schema.getExclusiveMaximum(), schema.getMultipleOf(), generator);
+        } else {
+            throw new RuntimeException("Data type not yet supported");
         }
         //TODO: Complete for other data types
-        return "INCOMPLETE";
     }
 
     public static String createInteger(String name, Double minimum, Double exclusiveMinimum, Double maximum,
